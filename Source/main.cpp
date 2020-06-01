@@ -3,7 +3,6 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <filesystem>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -41,7 +40,7 @@ static ShaderSource ParseShader(const std::string &filepath) {
     return {ss[0].str(), ss[1].str()};
 }
 
-static unsigned int CompileShader(unsigned int shaderType, const std::string &shaderSource) {
+static GLuint CompileShader(GLuint shaderType, const std::string &shaderSource) {
     const auto shaderId = glCreateShader(shaderType);
     const auto shaderSourceC = shaderSource.c_str();
 
@@ -69,7 +68,7 @@ static unsigned int CompileShader(unsigned int shaderType, const std::string &sh
     return shaderId;
 }
 
-static unsigned int CreateShader(const std::string &vertexShaderSource, const std::string &fragmentShaderSource) {
+static GLuint CreateShader(const std::string &vertexShaderSource, const std::string &fragmentShaderSource) {
     const auto programId = glCreateProgram();
     const auto vertexShaderId = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
     const auto fragmentShaderId = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -115,28 +114,36 @@ int main() {
 
     // Vertex buffer.
     const auto vertices = {
-            -0.5f, -0.5f,
-            0.f, 0.5f,
-            0.5f, -0.5f
+            -0.5f, -0.5f, // 0
+            0.5f, -0.5f,  // 1
+            0.5f, 0.5f,   // 2
+            -0.5f, 0.5f   // 3
+    };
+
+    const std::initializer_list<GLuint> indices = {
+            0, 1, 2,
+            2, 3, 0
     };
 
     // Number of elements in each vertex.
     const auto vertexSize = 2;
 
-    // Number of vertices in the buffer.
-    const auto vertexCount = vertices.size() / vertexSize;
-
-    unsigned int vao = 0;
+    GLuint vao = 0;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    unsigned int buffer;
+    GLuint buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.begin(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.begin(), GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, vertexSize, GL_FLOAT, GL_FALSE, vertexSize * sizeof(float), nullptr);
+    glVertexAttribPointer(0, vertexSize, GL_FLOAT, GL_FALSE, vertexSize * sizeof(GLfloat), nullptr);
+
+    GLuint ibo;
+    glGenBuffers(1, &ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.begin(), GL_STATIC_DRAW);
 
     const auto shaderSource = ParseShader("../Resources/Shaders/Basic.shader");
     const auto shaderId = CreateShader(shaderSource.VertexSource, shaderSource.FragmentSource);
@@ -148,7 +155,7 @@ int main() {
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
